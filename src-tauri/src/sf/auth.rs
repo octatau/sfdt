@@ -112,7 +112,10 @@ async fn handle_oauth_callback(
         .await;
 
     match token_response {
-        Ok(resp) => println!("TOKEN => {:?}", resp.access_token().secret()),
+        Ok(resp) => {
+            println!("TOKEN => {:?}", resp.access_token().secret());
+            println!("REFRESH TOKEN => {:?}", resp.refresh_token().unwrap().secret());
+        },
         Err(err) => {
             println!("ERROR => {:?}", err);
             shutdown_server().await;
