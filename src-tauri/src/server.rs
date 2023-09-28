@@ -1,8 +1,9 @@
-use crate::oauth;
+use crate::{oauth, service};
 use axum::{extract::Query, extract::State, response::IntoResponse, routing::get, Router};
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeVerifier, TokenResponse};
 use serde::Deserialize;
 use std::sync::Arc;
+use tauri::Manager;
 use tokio::sync::oneshot::{channel, Sender};
 use tokio::sync::Mutex;
 
@@ -14,19 +15,21 @@ enum ServerStatus {
 
 #[derive(Clone, Debug)]
 pub struct CallbackServer {
+    app_handle: tauri::AppHandle,
     port: String,
     status: ServerStatus,
 }
 
 impl CallbackServer {
-    pub fn init(port: String) -> CallbackServer {
+    pub fn init(app_handle: tauri::AppHandle, port: String) -> CallbackServer {
         CallbackServer {
+            app_handle,
             port,
             status: ServerStatus::Down,
         }
     }
 
-    pub async fn start(&mut self, oauth_flow: oauth::OAuthFlow) {
+    pub async fn start(&mut self) {
         match self.status {
             ServerStatus::Up(_) => println!("[callback server] server already running"),
             ServerStatus::Down => {
@@ -34,11 +37,9 @@ impl CallbackServer {
 
                 self.status = ServerStatus::Up(Arc::new(Mutex::new(Some(tx))));
 
-                println!("{:?}", self);
-
                 let app: Router = Router::new()
                     .route("/oauth/callback", get(handle_oauth_callback))
-                    .with_state(oauth_flow);
+                    .with_state(self.app_handle.clone());
 
                 println!("[callback server] starting oauth callback server");
                 let server = axum::Server::bind(&format!("0.0.0.0:{}", self.port).parse().unwrap())
@@ -48,13 +49,14 @@ impl CallbackServer {
                     rx.await.ok();
                 });
 
-                graceful.await.unwrap();
+                tokio::spawn(async move {
+                    graceful.await.unwrap();
+                });
             }
         }
     }
 
     pub async fn stop(&self) {
-        println!("{:?}", self);
         match &self.status {
             ServerStatus::Up(shutdown_tx) => {
                 if let Some(tx) = shutdown_tx.lock().await.take() {
@@ -74,9 +76,13 @@ struct OAuthCallbackQuery {
 }
 
 async fn handle_oauth_callback(
-    State(oauth_flow): State<oauth::OAuthFlow>,
+    State(app_handle): State<tauri::AppHandle>,
     query: Query<OAuthCallbackQuery>,
 ) -> impl IntoResponse {
+    let app_state: tauri::State<'_, service::GlobalState> = app_handle.state();
+    let oauth_flow_lock = app_state.oauth_flow.lock().await;
+    let oauth_flow = oauth_flow_lock.as_ref().unwrap();
+
     if query.state.secret() != oauth_flow.csrf_token.secret() {
         return "unauthorized".to_string();
     }
@@ -90,11 +96,13 @@ async fn handle_oauth_callback(
 
     match token_response {
         Ok(resp) => {
-            println!("[auth token] {}", resp.access_token().secret().to_string());
-            println!(
-                "[refresh token] {}",
-                resp.refresh_token().unwrap().secret().to_string()
-            );
+            std::mem::drop(oauth_flow_lock);
+            app_state
+                .consume_auth_token(
+                    resp.access_token().secret().to_string(),
+                    resp.refresh_token().unwrap().secret().to_string(),
+                )
+                .await;
         }
         Err(err) => {
             println!("ERROR => {:?}", err);
