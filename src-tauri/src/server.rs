@@ -56,7 +56,7 @@ impl CallbackServer {
         }
     }
 
-    pub async fn stop(&self) {
+    pub async fn stop(&mut self) {
         match &self.status {
             ServerStatus::Up(shutdown_tx) => {
                 if let Some(tx) = shutdown_tx.lock().await.take() {
@@ -66,6 +66,8 @@ impl CallbackServer {
             }
             ServerStatus::Down => println!("[callback server] server already down"),
         }
+
+        self.status = ServerStatus::Down;
     }
 
     pub fn get_port(&self) -> String {
