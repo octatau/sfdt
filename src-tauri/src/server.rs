@@ -67,6 +67,10 @@ impl CallbackServer {
             ServerStatus::Down => println!("[callback server] server already down"),
         }
     }
+
+    pub fn get_port(&self) -> String {
+        self.port.clone()
+    }
 }
 
 #[derive(Deserialize)]

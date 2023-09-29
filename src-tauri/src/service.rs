@@ -12,7 +12,8 @@ pub struct GlobalState {
 
 impl GlobalState {
     pub async fn init_auth_flow(&self, base_url: &str) {
-        let flow = oauth::OAuthFlow::new(base_url, &self.client_id, "3425");
+        let port = self.callback_server.lock().await.get_port();
+        let flow = oauth::OAuthFlow::new(base_url, &self.client_id, &port);
         self.oauth_flow.lock().await.replace(flow);
     }
 
