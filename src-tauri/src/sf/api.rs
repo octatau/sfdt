@@ -7,11 +7,15 @@ pub struct RequestConfig {
 #[derive(Debug)]
 pub struct RequestHandler {
     config: Option<RequestConfig>,
+    client: reqwest::Client,
 }
 
 impl RequestHandler {
     pub fn init() -> RequestHandler {
-        RequestHandler { config: None }
+        RequestHandler {
+            config: None,
+            client: reqwest::Client::new(),
+        }
     }
 
     pub fn set_config(&mut self, base_url: String, auth_token: String) {
@@ -29,7 +33,8 @@ impl RequestHandler {
         match &self.config {
             Some(config) => {
                 let url = format!("{}{}", config.base_url, path);
-                let v = reqwest::Client::new()
+                let v = self
+                    .client
                     .get(url)
                     .bearer_auth(&config.auth_token)
                     .send()
