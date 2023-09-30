@@ -1,5 +1,6 @@
 use crate::oauth;
 use crate::server;
+use crate::sf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -8,6 +9,7 @@ pub struct GlobalState {
     pub client_id: String,
     pub oauth_flow: Arc<Mutex<Option<oauth::OAuthFlow>>>,
     pub callback_server: Arc<Mutex<server::CallbackServer>>,
+    pub sf_api: Arc<Mutex<sf::api::RequestHandler>>,
 }
 
 impl GlobalState {
@@ -30,6 +32,30 @@ impl GlobalState {
     pub async fn consume_auth_token(&self, auth_token: String, refresh_token: String) {
         println!("[auth token] {}", auth_token);
         println!("[refresh token] {}", refresh_token);
+
+        let mut base_url = self
+            .oauth_flow
+            .lock()
+            .await
+            .clone()
+            .unwrap()
+            .client
+            .auth_url()
+            .url()
+            .clone();
+
+        if let Ok(mut path) = base_url.path_segments_mut() {
+            path.clear();
+        }
+
+        let mut api = self.sf_api.lock().await;
+        api.set_config(base_url.to_string(), auth_token);
+
+        match api.get_user_info().await {
+            Ok(user_info) => println!("{}", user_info),
+            Err(error) => println!("[auth error] {}", error),
+        }
+
         self.cleanup_auth().await;
     }
 
