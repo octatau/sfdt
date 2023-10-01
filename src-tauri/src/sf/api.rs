@@ -4,27 +4,27 @@ enum RequestType {
 }
 
 #[derive(Debug)]
-pub struct RequestConfig {
+pub struct RequestContext {
     pub base_url: String,
     pub auth_token: String,
 }
 
 #[derive(Debug)]
 pub struct RequestHandler {
-    config: Option<RequestConfig>,
+    context: Option<RequestContext>,
     client: reqwest::Client,
 }
 
 impl RequestHandler {
     pub fn init() -> RequestHandler {
         RequestHandler {
-            config: None,
+            context: None,
             client: reqwest::Client::new(),
         }
     }
 
     pub fn set_config(&mut self, base_url: String, auth_token: String) {
-        self.config = Some(RequestConfig {
+        self.context = Some(RequestContext {
             base_url,
             auth_token,
         });
@@ -53,7 +53,7 @@ impl RequestHandler {
 
     fn build_url(&self, path: &str, url_parameters: Option<Vec<(&str, &str)>>) -> String {
         super::url::build_url(
-            &self.config.as_ref().unwrap().base_url,
+            &self.context.as_ref().unwrap().base_url,
             path,
             url_parameters,
         )
@@ -78,20 +78,20 @@ impl RequestHandler {
         req_type: &RequestType,
         url: &str,
     ) -> Result<reqwest::Response, reqwest::Error> {
-        let config = self.config.as_ref().unwrap();
+        let context = self.context.as_ref().unwrap();
 
         match req_type {
             RequestType::GET => {
                 self.client
                     .get(url)
-                    .bearer_auth(&config.auth_token)
+                    .bearer_auth(&context.auth_token)
                     .send()
                     .await
             }
             RequestType::POST => {
                 self.client
                     .post(url)
-                    .bearer_auth(&config.auth_token)
+                    .bearer_auth(&context.auth_token)
                     .send()
                     .await
             }
