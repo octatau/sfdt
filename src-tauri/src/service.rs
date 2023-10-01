@@ -33,16 +33,9 @@ impl GlobalState {
         println!("[auth token] {}", auth_token);
         println!("[refresh token] {}", refresh_token);
 
-        let mut base_url = self
-            .oauth_flow
-            .lock()
-            .await
-            .clone()
-            .unwrap()
-            .client
-            .auth_url()
-            .url()
-            .clone();
+        let oauth_client = self.oauth_flow.lock().await.clone().unwrap().client;
+        let mut base_url = oauth_client.auth_url().url().clone();
+        let client_id = oauth_client.client_id().to_string();
 
         if let Ok(mut path) = base_url.path_segments_mut() {
             path.clear();
