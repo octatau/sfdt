@@ -1,4 +1,4 @@
-use crate::{oauth, service};
+use crate::service;
 use axum::{extract::Query, extract::State, response::IntoResponse, routing::get, Router};
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeVerifier, TokenResponse};
 use serde::Deserialize;
