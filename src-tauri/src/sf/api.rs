@@ -51,6 +51,11 @@ impl RequestHandler {
         self.request(RequestType::GET, url).await
     }
 
+    pub async fn get_api_versions(&self) -> Result<serde_json::Value, reqwest::Error> {
+        let url = self.build_url("/services/data", None);
+        self.request(RequestType::GET, url).await
+    }
+
     fn build_url(&self, path: &str, url_parameters: Option<Vec<(&str, &str)>>) -> String {
         super::url::build_url(
             &self.context.as_ref().unwrap().base_url,
