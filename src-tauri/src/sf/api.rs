@@ -1,3 +1,5 @@
+const DEFAULT_API_VERSION: &str = "58.0";
+
 enum RequestType {
     GET,
     POST,
@@ -7,6 +9,7 @@ enum RequestType {
 pub struct RequestContext {
     pub base_url: String,
     pub auth_token: String,
+    pub api_version: String,
 }
 
 #[derive(Debug)]
@@ -23,10 +26,11 @@ impl RequestHandler {
         }
     }
 
-    pub fn set_config(&mut self, base_url: String, auth_token: String) {
+    pub fn set_config(&mut self, base_url: String, auth_token: String, api_version: Option<&str>) {
         self.context = Some(RequestContext {
             base_url,
             auth_token,
+            api_version: api_version.unwrap_or(DEFAULT_API_VERSION).to_string(),
         });
     }
 
@@ -59,8 +63,8 @@ impl RequestHandler {
     pub async fn get_query_results(
         &self,
         query: &str,
-        api_version: &str,
     ) -> Result<serde_json::Value, reqwest::Error> {
+        let api_version = &self.context.as_ref().unwrap().api_version;
         let url = self.build_url(
             &format!("/services/data/v{api_version}/query"),
             Some(vec![("q", query)]),
