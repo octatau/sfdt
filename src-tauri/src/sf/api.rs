@@ -50,6 +50,12 @@ impl RequestHandler {
         self.request(RequestType::POST, url).await
     }
 
+    pub async fn get_org_limits(&self) -> Result<serde_json::Value, reqwest::Error> {
+        let api_version = &self.context.as_ref().unwrap().api_version;
+        let url = self.build_url(&format!("/services/data/v{api_version}/limits"), None);
+        self.request(RequestType::GET, url).await
+    }
+
     pub async fn get_user_info(&self) -> Result<serde_json::Value, reqwest::Error> {
         let url = self.build_url("/services/oauth2/userinfo", None);
         self.request(RequestType::GET, url).await
